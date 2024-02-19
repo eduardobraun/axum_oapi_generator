@@ -41,34 +41,6 @@ pub(crate) fn generate(oapi_definition: &OpenAPI) -> anyhow::Result<BTreeMap<Str
     let mut files: BTreeMap<String, String> = BTreeMap::default();
     let mut state = OapiState::new();
 
-    // for (schema_name, schema_or_ref) in oapi_definition.components.as_ref().unwrap().schemas.iter()
-    // {
-    //     match schema_or_ref {
-    //         openapiv3::ReferenceOr::Reference { reference } => unimplemented!(),
-    //         openapiv3::ReferenceOr::Item(schema_item) => match &schema_item.schema_kind {
-    //             openapiv3::SchemaKind::Type(schema_type) => match schema_type {
-    //                 openapiv3::Type::String(_) => (),
-    //                 openapiv3::Type::Number(_) => (),
-    //                 openapiv3::Type::Integer(_) => (),
-    //                 openapiv3::Type::Object(schema_obj) => {
-    //                     generate_struct(&mut visitor, &schema_name, schema_obj);
-    //                 }
-    //                 openapiv3::Type::Array(_) => (),
-    //                 openapiv3::Type::Boolean(_) => (),
-    //             },
-    //             openapiv3::SchemaKind::OneOf { one_of } => {
-    //                 generate_enum(&mut visitor, &schema_name, one_of)
-    //             }
-    //             openapiv3::SchemaKind::AllOf { all_of } => (),
-    //             openapiv3::SchemaKind::AnyOf { any_of } => {
-    //                 generate_enum(&mut visitor, &schema_name, any_of)
-    //             }
-    //             openapiv3::SchemaKind::Not { not } => (),
-    //             openapiv3::SchemaKind::Any(_) => (),
-    //         },
-    //     }
-    // }
-
     for (path_name, path_or_ref) in oapi_definition.paths.paths.iter() {
         match path_or_ref {
             openapiv3::ReferenceOr::Reference { reference } => {
