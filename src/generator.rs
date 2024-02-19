@@ -7,7 +7,7 @@ use syn::{Expr, FnArg, Item, ReturnType, Type};
 
 struct OapiState {
     _type_cache: BTreeMap<String, syn::Type>,
-    objects: BTreeMap<String, Item>,
+    _objects: BTreeMap<String, Item>,
     methods: BTreeMap<String, Item>,
 }
 
@@ -15,22 +15,22 @@ impl OapiState {
     fn new() -> Self {
         OapiState {
             _type_cache: BTreeMap::default(),
-            objects: BTreeMap::default(),
+            _objects: BTreeMap::default(),
             methods: BTreeMap::default(),
         }
     }
 
     fn _add_object(&mut self, name: impl AsRef<str>, object: Item) -> anyhow::Result<()> {
-        if self.objects.contains_key(name.as_ref()) {
+        if self._objects.contains_key(name.as_ref()) {
             return Err(anyhow::anyhow!("object with this name alredy exist"));
         }
-        self.objects.insert(name.as_ref().to_owned(), object);
+        self._objects.insert(name.as_ref().to_owned(), object);
         Ok(())
     }
 
     fn add_method(&mut self, name: impl AsRef<str>, method: Item) -> anyhow::Result<()> {
-        if self.objects.contains_key(name.as_ref()) {
-            return Err(anyhow::anyhow!("object with this name alredy exist"));
+        if self.methods.contains_key(name.as_ref()) {
+            return Err(anyhow::anyhow!("method with this name alredy exist"));
         }
         self.methods.insert(name.as_ref().to_owned(), method);
         Ok(())
@@ -213,7 +213,6 @@ fn generate_operation_args(
         }
     }
 
-    // TODO: generate body arg
     let request_arg = operation
         .request_body
         .as_ref()
