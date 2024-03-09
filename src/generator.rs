@@ -206,11 +206,10 @@ fn generate_operation_args(
             }
         };
     }
-    if !arg_idents.is_empty() {
-        for (ident, ty) in arg_idents.iter().zip(arg_types.iter()) {
-            let p = quote!(Query( #ident ) : Query<#ty>);
-            fn_args.push(syn::parse2::<FnArg>(p).unwrap());
-        }
+
+    for (ident, ty) in arg_idents.iter().zip(arg_types.iter()) {
+        let arg = quote!(Query( #ident ) : Query<#ty>);
+        fn_args.push(syn::parse2::<FnArg>(arg).unwrap());
     }
 
     let request_arg = operation
