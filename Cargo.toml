@@ -10,6 +10,7 @@ anyhow = "1.0.79"
 clap = { version = "4.5.0", features = ["derive"] }
 heck = "0.4.1"
 indexmap = { version = "2.2.3", features = ["serde"] }
+itertools = "0.12.1"
 openapiv3 = "2.0.0"
 prettyplease = "0.2.16"
 proc-macro2 = "1.0.78"

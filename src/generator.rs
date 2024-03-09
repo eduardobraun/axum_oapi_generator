@@ -1,22 +1,25 @@
-use std::collections::BTreeMap;
+use std::{collections::BTreeMap, rc::Rc};
 
 use heck::ToSnakeCase;
+use itertools::Itertools;
 use openapiv3::{OpenAPI, Operation, Parameter, PathItem, ReferenceOr};
 use quote::{format_ident, quote};
 use syn::{Expr, FnArg, Item, ReturnType, Type};
 
-struct OapiState {
+pub(crate) struct OapiState {
     _type_cache: BTreeMap<String, syn::Type>,
     _objects: BTreeMap<String, Item>,
     methods: BTreeMap<String, Item>,
+    oapi_definition: Rc<OpenAPI>,
 }
 
 impl OapiState {
-    fn new() -> Self {
+    pub fn new(oapi_definition: OpenAPI) -> Self {
         OapiState {
             _type_cache: BTreeMap::default(),
             _objects: BTreeMap::default(),
             methods: BTreeMap::default(),
+            oapi_definition: Rc::new(oapi_definition),
         }
     }
 
@@ -37,36 +40,36 @@ impl OapiState {
     }
 }
 
-pub(crate) fn generate(oapi_definition: &OpenAPI) -> anyhow::Result<BTreeMap<String, String>> {
+pub(crate) fn generate(state: &mut OapiState) -> anyhow::Result<BTreeMap<String, String>> {
     let mut files: BTreeMap<String, String> = BTreeMap::default();
-    let mut state = OapiState::new();
 
-    for (path_name, path_or_ref) in oapi_definition.paths.paths.iter() {
+    for (path_name, path_or_ref) in state.oapi_definition.clone().paths.paths.iter() {
         match path_or_ref {
             openapiv3::ReferenceOr::Reference { reference } => {
                 let _ = reference;
                 unimplemented!()
             }
             openapiv3::ReferenceOr::Item(path_item) => {
-                let path_arguments =
-                    generate_path_args(&oapi_definition, &mut state, &path_item.parameters);
+                let path_arguments = generate_path_args(state, &path_item.parameters);
                 for (method, operation) in MethodsIterator::new(&path_item) {
-                    generate_operation(
-                        &oapi_definition,
-                        &mut state,
-                        &path_arguments,
-                        method,
-                        path_name,
-                        operation,
-                    );
+                    generate_operation(state, &path_arguments, method, path_name, operation);
                 }
             }
         }
     }
 
+    // Use std when `intersperse` is stabilized
+    #[allow(unstable_name_collisions)]
     let file = syn::File {
         attrs: vec![],
-        items: state.methods.values().cloned().collect(),
+        items: state
+            .methods
+            .values()
+            .cloned()
+            // FIXME: this is a hack to get ln's between items, if you know a better way please
+            // tell me.
+            .intersperse(syn::parse_str::<Item>("type newline = ();")?)
+            .collect(),
         shebang: None,
     };
     let file_content = prettyplease::unparse(&file).replace("type newline = ();", "");
@@ -106,8 +109,7 @@ fn get_parameter_type(parameter: &Parameter) -> Type {
 }
 
 fn generate_path_args(
-    definition: &OpenAPI,
-    _state: &mut OapiState,
+    state: &mut OapiState,
     parameters: &[ReferenceOr<Parameter>],
 ) -> Option<FnArg> {
     let parameters: Vec<_> = parameters
@@ -115,7 +117,8 @@ fn generate_path_args(
         .map(|param_or_ref| match param_or_ref {
             ReferenceOr::Reference { reference } => {
                 let s: Vec<_> = reference.split("/").collect();
-                let param = definition
+                let param = state
+                    .oapi_definition
                     .components
                     .as_ref()
                     .unwrap()
@@ -176,7 +179,6 @@ fn generate_operation_docs(
 }
 
 fn generate_operation_args(
-    _definition: &OpenAPI,
     _state: &mut OapiState,
     path_arguments: &Option<FnArg>,
     operation: &Operation,
@@ -251,7 +253,6 @@ fn generate_operation_response() -> Option<ReturnType> {
 }
 
 fn generate_operation(
-    definition: &OpenAPI,
     state: &mut OapiState,
     path_arguments: &Option<FnArg>,
     method: impl AsRef<str>,
@@ -261,7 +262,7 @@ fn generate_operation(
     let operation_docs = generate_operation_docs(method, path, operation);
     let operation_name = operation.operation_id.as_ref().unwrap().to_snake_case();
     let operation_ident = format_ident!("{}", operation_name);
-    let operation_args = generate_operation_args(definition, state, path_arguments, operation);
+    let operation_args = generate_operation_args(state, path_arguments, operation);
     let operation_response = generate_operation_response();
 
     let tokens = quote! {
